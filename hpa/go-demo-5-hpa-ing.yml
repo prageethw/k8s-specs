@@ -17,7 +17,7 @@ spec:
       metric:
         name: http_req_per_second_per_replica
       describedObject:
-        apiVersion: extensions/v1beta1
+        apiVersion: extensions/v1beta1 #make sure you check the api version on the targeted resource using get command.
         kind: Ingress
         name: go-demo-5
       target:
