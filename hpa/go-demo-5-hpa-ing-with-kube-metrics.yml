@@ -1,0 +1,36 @@
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: go-demo-5
+  namespace: go-demo-5
+  annotations:
+    metric-config.object.nginx-ingress-controller-requests.prometheus/per-replica: "true"
+    metric-config.object.nginx-ingress-controller-requests.prometheus/query: |
+      sum(
+      rate(
+        nginx_ingress_controller_requests{ingress="go-demo-5"}[5m]
+        )) by (ingress)/
+      sum(
+      label_join(
+        kube_deployment_status_replicas{deployment="go-demo-5"}, "ingress", ",", "deployment"
+        )) by (ingress)
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: go-demo-5
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Object
+    object:
+      metric:
+        name: nginx-ingress-controller-requests
+      describedObject:
+        apiVersion: v1 #make sure you check the api version on the targeted resource using get command.
+        kind: Pod # note only Pod can be used as resource kind for kube-metrics-adapter.
+        name: go-demo-5
+      target:
+        type: Value
+        value: 50m
