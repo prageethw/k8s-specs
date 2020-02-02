@@ -1,3 +1,41 @@
+# #### Below is deprecated as per here https://github.com/zalando-incubator/kube-metrics-adapter while external metrics supported.
+# ---
+# apiVersion: autoscaling/v2beta2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: go-demo-5
+#   namespace: go-demo-5
+#   annotations:
+#     #metric-config.<metricType>.<metricName>.<collectorName>/<configKey>
+#     metric-config.object.nginx-ingress-controller-requests-per-second.prometheus/per-replica: "true" # average request on replica
+#     metric-config.object.nginx-ingress-controller-requests-per-second.prometheus/query: |
+#       sum(
+#       rate(
+#         nginx_ingress_controller_requests{ingress="go-demo-5"}[5m]
+#         )) by (ingress)/
+#       sum(
+#       label_join(
+#         kube_deployment_status_replicas{deployment="go-demo-5"}, "ingress", ",", "deployment"
+#         )) by (ingress)
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: go-demo-5
+#   minReplicas: 3
+#   maxReplicas: 10
+#   metrics:
+#   - type: Object
+#     object:
+#       metric:
+#         name: nginx-ingress-controller-requests-per-second
+#       describedObject:
+#         apiVersion: v1 #make sure you check the api version on the targeted resource using get command.
+#         kind: Pod # note only Pod can be used as resource kind for kube-metrics-adapter.
+#         name: go-demo-5
+#       target:
+#         type: Value
+#         value: 50m
 ---
 apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
@@ -5,8 +43,15 @@ metadata:
   name: go-demo-5
   namespace: go-demo-5
   annotations:
-    metric-config.object.nginx-ingress-controller-requests.prometheus/per-replica: "true"
-    metric-config.object.nginx-ingress-controller-requests.prometheus/query: |
+    ######## 
+    # This annotation is optional.
+    # If specified, then this prometheus server is used,
+    # instead of the prometheus server specified as the CLI argument `--prometheus-server`.
+    # metric-config.external.prometheus-query.prometheus/prometheus-server: http://prometheus.my-namespace.svc
+    # metric-config.<metricType>.<metricName>.<collectorName>/<configKey>
+    # <configKey> == query-name
+    #########
+    metric-config.external.prometheus-query.prometheus/nginx-ingress-controller-requests-per-replica: |
       sum(
       rate(
         nginx_ingress_controller_requests{ingress="go-demo-5"}[5m]
@@ -21,16 +66,15 @@ spec:
     kind: Deployment
     name: go-demo-5
   minReplicas: 3
-  maxReplicas: 20
+  maxReplicas: 10
   metrics:
-  - type: Object
-    object:
+  - type: External
+    external:
       metric:
-        name: nginx-ingress-controller-requests
-      describedObject:
-        apiVersion: v1 #make sure you check the api version on the targeted resource using get command.
-        kind: Pod # note only Pod can be used as resource kind for kube-metrics-adapter.
-        name: go-demo-5
+        name: prometheus-query
+        selector:
+          matchLabels:
+            query-name: nginx-ingress-controller-requests-per-replica
       target:
-        type: Value
+        type: AverageValue
         value: 50m
